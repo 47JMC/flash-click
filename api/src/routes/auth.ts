@@ -110,15 +110,23 @@ authRouter.get("/callback", async (req, res) => {
 });
 
 authRouter.get("/me", async (req, res) => {
-  const token = req.cookies.token;
+  try {
+    const token = req.cookies.token;
 
-  if (!token) return res.status(400).json({ error: "Token not found" });
+    if (!token) {
+      return res.status(401).json({ error: "Token not found" });
+    }
 
-  const user = await verifyUser(token);
+    const user = await verifyUser(token);
 
-  if (!user) return res.status(401).send("Unauthorised");
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
-  res.json(user);
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 export default authRouter;
