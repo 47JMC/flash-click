@@ -14,6 +14,6 @@ export async function verifyUser(token: string) {
     const user = await User.findOne({ id: decoded.id }).lean();
     return user ?? null;
   } catch {
-    return;
+    return null;
   }
 }

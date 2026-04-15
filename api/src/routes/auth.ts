@@ -3,6 +3,7 @@ import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
 import type { UserData } from "../utils/types.js";
+import { verifyUser } from "../utils/verifyUser.js";
 
 const authRouter = Router();
 
@@ -108,6 +109,16 @@ authRouter.get("/callback", async (req, res) => {
   res.redirect(FRONTEND_URL);
 });
 
-authRouter.get("/me", (req, res) => {});
+authRouter.get("/me", async (req, res) => {
+  const token = req.cookies.token;
+
+  if (!token) return res.status(400).json({ error: "Token not found" });
+
+  const user = await verifyUser(token);
+
+  if (!user) return res.status(401).send("Unauthorised");
+
+  res.json(user);
+});
 
 export default authRouter;
