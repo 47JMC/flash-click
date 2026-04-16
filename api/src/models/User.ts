@@ -9,6 +9,7 @@ const userSchema = new Schema(
       type: String,
       default: "https://cdn.discordapp.com/embed/avatars/0.png",
     },
+    clicks: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
