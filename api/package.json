@@ -20,6 +20,7 @@
     "tsx": "^4.21.0"
   },
   "dependencies": {
+    "cookie": "^1.1.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
