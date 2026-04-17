@@ -30,7 +30,7 @@ export function initSocket(io: Server) {
   io.on("connection", (socket) => {
     console.log(`Connected: ${socket.id}`);
 
-    socket.on("create_room", (data) => createRoom(io, socket));
+    socket.on("create_room", () => createRoom(io, socket));
     socket.on("join_room", (data) => joinRoom(io, socket, data));
 
     socket.on("disconnect", () => console.log("Disconnected: ", socket.id));
