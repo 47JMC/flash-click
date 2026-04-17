@@ -1,12 +1,12 @@
 // src/models/Room.ts
 import { Schema, model } from "mongoose";
-import User from "./User.js";
+import { userSchema } from "./User.js";
 
 const roomSchema = new Schema(
   {
     code: { type: String, required: true, unique: true },
-    host: { type: User, required: true },
-    guest: { type: User, default: null },
+    host: { type: userSchema, required: true },
+    guest: { type: userSchema, default: null },
     status: {
       type: String,
       enum: ["waiting", "countdown", "running", "done"],
