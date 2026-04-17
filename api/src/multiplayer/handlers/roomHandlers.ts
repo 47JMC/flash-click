@@ -3,6 +3,8 @@ import Room from "../../models/Room.js";
 
 import { roomSockets } from "../state.js";
 
+const DEV_MODE = process.env.DEV_MODE;
+
 export async function createRoom(io: Server, socket: Socket) {
   try {
     const user = socket.data.user;
@@ -34,7 +36,7 @@ export async function createRoom(io: Server, socket: Socket) {
     socket.join(randomCode);
     roomSockets.set(randomCode, { host: socket.id });
 
-    socket.emit("roomCreated", { code: randomCode });
+    socket.emit("room_created", { code: randomCode });
 
     console.log("NUKE IT");
   } catch (error) {
@@ -55,7 +57,7 @@ export async function joinRoom(
     status: { $ne: "done" },
   });
 
-  if (checkAlreadyInRoom) {
+  if (checkAlreadyInRoom && !DEV_MODE) {
     return io
       .to(socket.id)
       .emit("error", { message: "User already in a room" });
