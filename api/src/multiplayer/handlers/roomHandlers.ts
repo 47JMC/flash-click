@@ -37,8 +37,6 @@ export async function createRoom(io: Server, socket: Socket) {
     roomSockets.set(randomCode, { host: socket.id });
 
     socket.emit("room_created", { code: randomCode });
-
-    console.log("NUKE IT");
   } catch (error) {
     console.log(error);
     return socket.emit("error", { message: "Failed to create room" });
@@ -91,4 +89,43 @@ export async function joinRoom(
 
   // tell the guest they successfully joined
   socket.emit("room_joined", { code: room.code });
+}
+
+export async function syncClicks(
+  io: Server,
+  socket: Socket,
+  data: { code: string; clicks: number },
+) {
+  console.log("sync_clicks received", data); // add this
+  const roomSocket = roomSockets.get(data.code);
+  if (!roomSocket) return socket.emit("error", { message: "Room not found" });
+
+  const oppSocketId =
+    roomSocket.host === socket.id ? roomSocket.guest : roomSocket.host;
+
+  console.log(oppSocketId);
+  if (!oppSocketId) return;
+
+  io.to(oppSocketId).emit("update_clicks", { clicks: data.clicks });
+}
+
+export async function rejoinRoom(
+  io: Server,
+  socket: Socket,
+  data: { code: string },
+) {
+  const room = await Room.findOne({ code: data.code });
+  if (!room) return socket.emit("error", { message: "Room not found" });
+
+  const isHost = room.host.id === socket.data.user.id;
+
+  const existing = roomSockets.get(data.code) || { host: "", guest: "" };
+
+  if (isHost) {
+    roomSockets.set(data.code, { ...existing, host: socket.id });
+  } else {
+    roomSockets.set(data.code, { ...existing, guest: socket.id });
+  }
+
+  socket.join(data.code);
 }

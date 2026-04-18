@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import authRouter from "./routes/auth.js";
 import { initSocket } from "./multiplayer/socket.js";
+import roomsRouter from "./routes/rooms.js";
 
 const app = express();
 const server = createServer(app);
@@ -31,6 +32,7 @@ app.use(cookieParser());
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 
 app.use("/auth", authRouter);
+app.use("/rooms", roomsRouter);
 
 server.listen(4000, () =>
   console.log(`Server is running on http://localhost:${PORT}`),

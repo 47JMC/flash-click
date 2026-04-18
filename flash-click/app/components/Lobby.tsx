@@ -4,6 +4,7 @@ import { initSocket } from "@/lib/socket";
 import { useAuth } from "./UserProvider";
 import { useEffect, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
+import { useRouter } from "next/navigation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -12,8 +13,15 @@ function Lobby() {
   const [roomCode, setRoomCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [status, setStatus] = useState<"idle" | "waiting" | "joining">("idle");
+  const router = useRouter();
+  const routerRef = useRef(router);
+  const roomCodeRef = useRef(roomCode);
 
   const { user, loading } = useAuth();
+
+  useEffect(() => {
+    roomCodeRef.current = roomCode;
+  }, [roomCode]);
 
   useEffect(() => {
     const socket = initSocket();
@@ -25,13 +33,12 @@ function Lobby() {
       setStatus("waiting");
     });
 
-    socket.on("player_joined", ({ username }: { username: string }) => {
-      console.log(`${username} joined`);
-      // navigate to game screen
+    socket.on("player_joined", () => {
+      routerRef.current.push(`/game/${roomCodeRef.current}`);
     });
 
-    socket.on("room_joined", () => {
-      // navigate to game screen
+    socket.on("room_joined", ({ code }: { code: string }) => {
+      routerRef.current.push(`/game/${code}`);
     });
 
     socket.on("error", ({ message }: { message: string }) => {
@@ -48,15 +55,12 @@ function Lobby() {
   }, []);
 
   const handleCreateRoom = () => {
-    socketRef.current?.emit("create_room", { username: user?.username });
+    socketRef.current?.emit("create_room");
   };
 
   const handleJoinRoom = () => {
     if (!joinCode.trim()) return;
-    socketRef.current?.emit("join_room", {
-      code: joinCode.toUpperCase(),
-      username: user?.username,
-    });
+    socketRef.current?.emit("join_room", { code: joinCode.toUpperCase() });
     setStatus("joining");
   };
 
@@ -80,7 +84,7 @@ function Lobby() {
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                   placeholder="Room code"
                   maxLength={4}
-                  className="px-3 py-2 rounded bg-indigo-900 text-white tracking-widest uppercase"
+                  className="px-3 py2 rounded bg-indigo-900 text-white tracking-widest uppercase"
                 />
                 <button
                   onClick={handleJoinRoom}

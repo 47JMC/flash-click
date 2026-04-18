@@ -1,7 +1,12 @@
 import { Server } from "socket.io";
 import cookie from "cookie";
 import { verifyUser } from "../utils/verifyUser.js";
-import { createRoom, joinRoom } from "./handlers/roomHandlers.js";
+import {
+  createRoom,
+  joinRoom,
+  rejoinRoom,
+  syncClicks,
+} from "./handlers/roomHandlers.js";
 
 export function initSocket(io: Server) {
   io.use(async (socket, next) => {
@@ -32,6 +37,8 @@ export function initSocket(io: Server) {
 
     socket.on("create_room", () => createRoom(io, socket));
     socket.on("join_room", (data) => joinRoom(io, socket, data));
+    socket.on("sync_clicks", (data) => syncClicks(io, socket, data));
+    socket.on("rejoin_room", (data) => rejoinRoom(io, socket, data));
 
     socket.on("disconnect", () => console.log("Disconnected: ", socket.id));
   });
