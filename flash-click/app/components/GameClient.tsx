@@ -6,7 +6,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
 import { useAuth } from "./UserProvider";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type GameClientProps = {
   room: Room;
@@ -25,7 +25,6 @@ function GameClient({ room }: GameClientProps) {
     guest: { username: string; clicks: number };
   } | null>(null);
   const clicksRef = useRef<number>(0);
-  const router = useRouter();
 
   const { user } = useAuth();
   const isHost = user?.id === room.host.id;
@@ -136,12 +135,12 @@ function GameClient({ room }: GameClientProps) {
             </div>
           </div>
 
-          <button
-            onClick={() => router.push("/")}
+          <Link
+            href="/"
             className="px-8 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 transition-all font-semibold"
           >
             Back to lobby
-          </button>
+          </Link>
         </div>
       )}
 
