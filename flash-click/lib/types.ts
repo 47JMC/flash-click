@@ -14,3 +14,10 @@ export type Room = {
   duration: number;
   startedAt: Date;
 };
+
+export type Settings = {
+  duration: number;
+  countdown: number;
+  clickGoal: number | null;
+  powerups: boolean;
+};

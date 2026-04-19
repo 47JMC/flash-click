@@ -5,6 +5,8 @@ import { useAuth } from "./UserProvider";
 import { useEffect, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
 import { useRouter } from "next/navigation";
+import RoomSettings from "./RoomSettings";
+import type { Settings } from "@/lib/types";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -12,7 +14,16 @@ function Lobby() {
   const socketRef = useRef<Socket | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
-  const [status, setStatus] = useState<"idle" | "waiting" | "joining">("idle");
+  const [settings, setSettings] = useState<Settings>({
+    duration: 15,
+    countdown: 3,
+    clickGoal: null,
+    powerups: false,
+  });
+  const [status, setStatus] = useState<
+    "idle" | "creating" | "waiting" | "joining"
+  >("idle");
+
   const router = useRouter();
   const routerRef = useRef(router);
   const roomCodeRef = useRef(roomCode);
@@ -55,7 +66,7 @@ function Lobby() {
   }, []);
 
   const handleCreateRoom = () => {
-    socketRef.current?.emit("create_room");
+    socketRef.current?.emit("create_room", { settings });
   };
 
   const handleJoinRoom = () => {
@@ -73,7 +84,7 @@ function Lobby() {
           {status === "idle" && (
             <>
               <button
-                onClick={handleCreateRoom}
+                onClick={() => setStatus("creating")}
                 className="transition-colors cursor-pointer border-2 bg-blue-400 hover:bg-blue-700 hover:border-green-400 px-4 py-2 rounded"
               >
                 Create Room
@@ -84,7 +95,7 @@ function Lobby() {
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                   placeholder="Room code"
                   maxLength={4}
-                  className="px-3 py2 rounded bg-indigo-900 text-white tracking-widest uppercase"
+                  className="px-3 py-2 rounded bg-indigo-900 text-white tracking-widest uppercase"
                 />
                 <button
                   onClick={handleJoinRoom}
@@ -94,6 +105,15 @@ function Lobby() {
                 </button>
               </div>
             </>
+          )}
+
+          {status === "creating" && (
+            <RoomSettings
+              settings={settings}
+              setSettings={setSettings}
+              onConfirm={handleCreateRoom}
+              onBack={() => setStatus("idle")}
+            />
           )}
 
           {status === "waiting" && (
