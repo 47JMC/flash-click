@@ -2,6 +2,7 @@ import { Server, Socket } from "socket.io";
 import Room from "../../models/Room.js";
 
 import { roomSockets } from "../state.js";
+import { startGameTimer } from "./timerHandlers.js";
 
 const DEV_MODE = process.env.DEV_MODE;
 
@@ -96,15 +97,17 @@ export async function syncClicks(
   socket: Socket,
   data: { code: string; clicks: number },
 ) {
-  console.log("sync_clicks received", data); // add this
   const roomSocket = roomSockets.get(data.code);
   if (!roomSocket) return socket.emit("error", { message: "Room not found" });
 
   const oppSocketId =
     roomSocket.host === socket.id ? roomSocket.guest : roomSocket.host;
 
-  console.log(oppSocketId);
   if (!oppSocketId) return;
+
+  const isHost = roomSocket.host === socket.id;
+  const field = isHost ? "host.clicks" : "guest.clicks";
+  await Room.updateOne({ code: data.code }, { $set: { [field]: data.clicks } });
 
   io.to(oppSocketId).emit("update_clicks", { clicks: data.clicks });
 }
@@ -117,14 +120,26 @@ export async function rejoinRoom(
   const room = await Room.findOne({ code: data.code });
   if (!room) return socket.emit("error", { message: "Room not found" });
 
-  const isHost = room.host.id === socket.data.user.id;
+  let isHost = room.host.id === socket.data.user.id;
 
-  const existing = roomSockets.get(data.code) || { host: "", guest: "" };
+  const existing = roomSockets.get(data.code);
+
+  if (DEV_MODE) isHost = !existing?.host || existing.host === socket.id;
 
   if (isHost) {
-    roomSockets.set(data.code, { ...existing, host: socket.id });
+    roomSockets.set(data.code, {
+      host: socket.id,
+      guest: existing?.guest || "",
+    });
   } else {
-    roomSockets.set(data.code, { ...existing, guest: socket.id });
+    roomSockets.set(data.code, {
+      host: existing?.host || "",
+      guest: socket.id,
+    });
+  }
+  const updated = roomSockets.get(data.code);
+  if (updated?.host && updated?.guest) {
+    startGameTimer(io, data.code);
   }
 
   socket.join(data.code);
