@@ -4,9 +4,16 @@ import Room from "../../models/Room.js";
 import { roomSockets } from "../state.js";
 import { startGameTimer } from "./timerHandlers.js";
 
+import { Settings } from "../../utils/types.js";
+import { endGame } from "./gameHandlers.js";
+
 const DEV_MODE = process.env.DEV_MODE;
 
-export async function createRoom(io: Server, socket: Socket) {
+export async function createRoom(
+  io: Server,
+  socket: Socket,
+  { settings }: { settings: Settings },
+) {
   try {
     const user = socket.data.user;
 
@@ -30,6 +37,10 @@ export async function createRoom(io: Server, socket: Socket) {
     const createdRoom = new Room({
       code: randomCode,
       host: user,
+      duration: settings.duration,
+      clickGoal: settings.clickGoal,
+      powerups: settings.powerups,
+      countdown: settings.countdown,
     });
 
     await createdRoom.save();
@@ -98,6 +109,9 @@ export async function syncClicks(
   data: { code: string; clicks: number },
 ) {
   const roomSocket = roomSockets.get(data.code);
+  const room = await Room.findOne({ code: data.code });
+
+  if (!room) return socket.emit("error", { message: "Room not found" });
   if (!roomSocket) return socket.emit("error", { message: "Room not found" });
 
   const oppSocketId =
@@ -108,6 +122,11 @@ export async function syncClicks(
   const isHost = roomSocket.host === socket.id;
   const field = isHost ? "host.clicks" : "guest.clicks";
   await Room.updateOne({ code: data.code }, { $set: { [field]: data.clicks } });
+
+  if (room.clickGoal > 0 && data.clicks >= room.clickGoal) {
+    // end the game early
+    endGame(io, data.code); // or a separate endGame function
+  }
 
   io.to(oppSocketId).emit("update_clicks", { clicks: data.clicks });
 }
@@ -139,7 +158,7 @@ export async function rejoinRoom(
   }
   const updated = roomSockets.get(data.code);
   if (updated?.host && updated?.guest) {
-    startGameTimer(io, data.code);
+    setTimeout(() => startGameTimer(io, data.code), 500);
   }
 
   socket.join(data.code);

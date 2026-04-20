@@ -47,11 +47,18 @@ function GameClient({ room }: GameClientProps) {
       socketRef.current?.emit("rejoin_room", { code: room.code });
     });
 
+    // if already connected, emit immediately
+    if (socketRef.current.connected) {
+      socketRef.current?.emit("rejoin_room", { code: room.code });
+    }
+
     socketRef.current.on("update_clicks", ({ clicks }: { clicks: number }) => {
       setOppClicks(clicks);
     });
 
-    socketRef.current.on("countdown_start", () => setPhase("countdown"));
+    socketRef.current.on("countdown_start", () => {
+      setPhase("countdown");
+    });
 
     socketRef.current.on(
       "countdown_tick",
@@ -85,6 +92,7 @@ function GameClient({ room }: GameClientProps) {
 
     return () => {
       clearInterval(interval);
+      socketRef.current?.off("connect");
       socketRef.current?.off("update_clicks");
       socketRef.current?.off("countdown_start");
       socketRef.current?.off("countdown_tick");

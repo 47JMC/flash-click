@@ -35,7 +35,7 @@ export function initSocket(io: Server) {
   io.on("connection", (socket) => {
     console.log(`Connected: ${socket.id}`);
 
-    socket.on("create_room", () => createRoom(io, socket));
+    socket.on("create_room", (data) => createRoom(io, socket, data));
     socket.on("join_room", (data) => joinRoom(io, socket, data));
     socket.on("sync_clicks", (data) => syncClicks(io, socket, data));
     socket.on("rejoin_room", (data) => rejoinRoom(io, socket, data));
