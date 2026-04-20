@@ -1,5 +1,4 @@
 import ToggleButton from "./ToggleButton";
-
 import type { Settings } from "@/lib/types";
 
 type RoomSettingsProps = {
@@ -16,9 +15,62 @@ function RoomSettings({
   onBack,
 }: RoomSettingsProps) {
   return (
-    <div className="p-10 m-4">
-      <p className="text-xl font-fredoka font-semibold">Settings</p>
-      <ToggleButton />
+    <div className="p-4 flex flex-col gap-4 w-full">
+      <p className="text-xl font-fredoka font-semibold text-center">Settings</p>
+
+      <div className="flex justify-between items-center w-full">
+        <p className="font-medium">Duration</p>
+        <input
+          type="number"
+          value={settings.duration}
+          min={5}
+          max={60}
+          onChange={(e) =>
+            setSettings((s) => ({ ...s, duration: +e.target.value }))
+          }
+          className="w-16 text-center bg-indigo-950 border border-indigo-700 hover:border-indigo-500 focus:border-indigo-400 focus:outline-none rounded-lg p-1.5 text-sm font-semibold transition-colors"
+        />
+      </div>
+
+      <div className="flex justify-between items-center w-full">
+        <p className="font-medium">Click goal</p>
+        <input
+          type="number"
+          value={settings.clickGoal ?? ""}
+          placeholder="None"
+          min={10}
+          onChange={(e) =>
+            setSettings((s) => ({
+              ...s,
+              clickGoal: e.target.value ? +e.target.value : null,
+            }))
+          }
+          className="w-16 text-center bg-indigo-950 border border-indigo-700 hover:border-indigo-500 focus:border-indigo-400 focus:outline-none rounded-lg p-1.5 text-sm font-semibold transition-colors placeholder:text-indigo-600"
+        />
+      </div>
+
+      <div className="flex justify-between items-center w-full">
+        <p className="font-medium">Power-ups</p>
+        <ToggleButton
+          toggled={settings.powerups}
+          setToggle={(val) => setSettings((s) => ({ ...s, powerups: val }))}
+        />
+      </div>
+
+      <div className="flex gap-2 mt-2">
+        <button
+          onClick={onBack}
+          className="flex-1 py-2 rounded-lg bg-indigo-950 hover:bg-indigo-900 border border-indigo-800 transition-all text-sm"
+        >
+          Back
+        </button>
+        <button
+          onClick={onConfirm}
+          className="flex-1 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 transition-all font-semibold text-sm"
+        >
+          Create →
+        </button>
+      </div>
     </div>
   );
 }

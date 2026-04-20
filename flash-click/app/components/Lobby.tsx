@@ -17,7 +17,7 @@ function Lobby() {
   const [settings, setSettings] = useState<Settings>({
     duration: 15,
     countdown: 3,
-    clickGoal: null,
+    clickGoal: 0,
     powerups: false,
   });
   const [status, setStatus] = useState<
@@ -78,7 +78,7 @@ function Lobby() {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <div className="flex flex-col bg-indigo-950 rounded-lg p-4 m-2">
+    <div className="flex flex-col bg-indigo-950 rounded-lg p-4 m-2 w-full max-w-sm">
       {user ? (
         <div className="flex flex-col gap-3">
           {status === "idle" && (
