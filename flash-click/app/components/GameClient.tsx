@@ -8,6 +8,9 @@ import { Socket } from "socket.io-client";
 import { useAuth } from "./UserProvider";
 import Link from "next/link";
 
+import PowerupsBox from "./PowerupsBox";
+import Powerup from "./Powerup";
+
 type GameClientProps = {
   room: Room;
 };
@@ -24,6 +27,8 @@ function GameClient({ room }: GameClientProps) {
     host: { username: string; clicks: number };
     guest: { username: string; clicks: number };
   } | null>(null);
+  const [doubleActive, setDoubleActive] = useState(false);
+
   const clicksRef = useRef<number>(0);
 
   const { user } = useAuth();
@@ -35,7 +40,8 @@ function GameClient({ room }: GameClientProps) {
 
   const addClick = () => {
     if (phase !== "running") return;
-    clicksRef.current += 1;
+    const increment = doubleActive ? 2 : 1;
+    clicksRef.current += increment;
     setMyClicks(clicksRef.current);
   };
 
@@ -81,6 +87,16 @@ function GameClient({ room }: GameClientProps) {
       setResults(data);
     });
 
+    socketRef.current.on(
+      "powerup_active",
+      ({ type, duration }: { type: string; duration: number }) => {
+        if (type === "double") {
+          setDoubleActive(true);
+          setTimeout(() => setDoubleActive(false), duration);
+        }
+      },
+    );
+
     const interval = setInterval(() => {
       if (clicksRef.current > 0) {
         socketRef.current?.emit("sync_clicks", {
@@ -99,12 +115,16 @@ function GameClient({ room }: GameClientProps) {
       socketRef.current?.off("game_start");
       socketRef.current?.off("timer_tick");
       socketRef.current?.off("game_over");
+      socketRef.current?.off("powerup_active");
     };
   }, [room.code]);
 
   const total = myClicks + oppClicks;
   const myPct = total === 0 ? 50 : Math.round((myClicks / total) * 100);
   const iWon = results?.winner?.username === me?.username;
+
+  const handlePowerupUse = (type: string) =>
+    socketRef.current?.emit("use_powerup", { code: room.code, type });
 
   return (
     <div className="relative min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-4 gap-6">
@@ -242,6 +262,16 @@ function GameClient({ room }: GameClientProps) {
               ? "CLICK"
               : "✓"}
       </button>
+      {room.powerups && (
+        <PowerupsBox>
+          <Powerup
+            onUse={handlePowerupUse}
+            myClicks={myClicks}
+            phase={phase}
+            doubleActive={doubleActive}
+          />
+        </PowerupsBox>
+      )}
     </div>
   );
 }

@@ -163,3 +163,37 @@ export async function rejoinRoom(
 
   socket.join(data.code);
 }
+
+export async function usePowerUp(
+  io: Server,
+  socket: Socket,
+  data: { code: string; type: string },
+) {
+  const room = await Room.findOne({
+    code: data.code,
+  });
+
+  const roomSocket = roomSockets.get(data.code);
+
+  if (!room || !roomSocket)
+    return socket.emit("error", { message: "Room not found!" });
+
+  if (room.status !== "running")
+    return socket.emit("error", { message: "Game not running" });
+  if (!room.powerups)
+    return socket.emit("error", { message: "Power-ups disabled" });
+
+  const isHost = roomSocket.host === socket.id;
+  const myClicks = isHost ? room.host.clicks : room.guest?.clicks;
+
+  if (!myClicks)
+    return socket.emit("error", { message: "myClicks is undefined" });
+
+  if (myClicks < 15)
+    return socket.emit("error", { message: "Not enough clicks" });
+
+  const field = isHost ? "host.clicks" : "guest.clicks";
+  await Room.updateOne({ code: data.code }, { $inc: { [field]: -15 } });
+
+  socket.emit("powerup_active", { type: "double", duration: 3000 });
+}

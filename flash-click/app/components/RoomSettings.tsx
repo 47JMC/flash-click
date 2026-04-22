@@ -10,9 +10,9 @@ type RoomSettingsProps = {
 
 function RoomSettings({
   settings,
+  onBack,
   setSettings,
   onConfirm,
-  onBack,
 }: RoomSettingsProps) {
   return (
     <div className="p-4 flex flex-col gap-4 w-full">

@@ -12,6 +12,9 @@ export type Room = {
   guest: User;
   status: "waiting" | "countdown" | "running" | "done";
   duration: number;
+  countdown: number;
+  clickGoal: number | null;
+  powerups: boolean;
   startedAt: Date;
 };
 
