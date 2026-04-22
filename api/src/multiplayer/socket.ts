@@ -15,7 +15,6 @@ import { endGame } from "./handlers/gameHandlers.js";
 const DEV_MODE = process.env.DEV_MODE;
 
 async function handleDisconnect(io: Server, socket: Socket) {
-  console.log("disconnect fired", socket.id);
 
   for (const [code, sockets] of roomSockets) {
     if (DEV_MODE) {
