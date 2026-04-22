@@ -6,8 +6,9 @@ import { Server } from "socket.io";
 import { createServer } from "node:http";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
-import authRouter from "./routes/auth.js";
 import { initSocket } from "./multiplayer/socket.js";
+
+import authRouter from "./routes/auth.js";
 import roomsRouter from "./routes/rooms.js";
 
 const app = express();
