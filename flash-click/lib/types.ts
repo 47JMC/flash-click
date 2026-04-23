@@ -4,17 +4,19 @@ export type User = {
   global_name: string;
   avatar: string;
   clicks: number;
+  isHost: boolean;
+  socketId: string;
 };
 
 export type Room = {
   code: string;
-  host: User;
-  guest: User;
+  players: User[];
   status: "waiting" | "countdown" | "running" | "done";
   duration: number;
   countdown: number;
   clickGoal: number | null;
   powerups: boolean;
+  maxPlayers: number;
   startedAt: Date;
 };
 
@@ -23,4 +25,5 @@ export type Settings = {
   countdown: number;
   clickGoal: number | null;
   powerups: boolean;
+  maxPlayers: number;
 };

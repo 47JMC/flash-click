@@ -19,6 +19,7 @@ function Lobby() {
     countdown: 3,
     clickGoal: 0,
     powerups: false,
+    maxPlayers: 2,
   });
   const [status, setStatus] = useState<
     "idle" | "creating" | "waiting" | "joining"
@@ -42,6 +43,7 @@ function Lobby() {
     socket.on("room_created", ({ code }: { code: string }) => {
       setRoomCode(code);
       setStatus("waiting");
+      routerRef.current.push(`/lobby/${code}`);
     });
 
     socket.on("player_joined", () => {
@@ -49,7 +51,7 @@ function Lobby() {
     });
 
     socket.on("room_joined", ({ code }: { code: string }) => {
-      routerRef.current.push(`/game/${code}`);
+      routerRef.current.push(`/lobby/${code}`);
     });
 
     socket.on("error", ({ message }: { message: string }) => {

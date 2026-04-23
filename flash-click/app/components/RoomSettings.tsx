@@ -64,6 +64,21 @@ function RoomSettings({
           className="w-16 text-center bg-indigo-950 border border-indigo-700 hover:border-indigo-500 focus:border-indigo-400 focus:outline-none rounded-lg p-1.5 text-sm font-semibold transition-colors placeholder:text-indigo-600"
         />
       </div>
+      <div className="flex justify-between items-center w-full">
+        <p className="font-medium">Max Players</p>
+        <input
+          type="number"
+          value={settings.maxPlayers ?? 2}
+          min={2}
+          onChange={(e) =>
+            setSettings((s) => ({
+              ...s,
+              maxPlayers: e.target.value ? +e.target.value : 2,
+            }))
+          }
+          className="w-16 text-center bg-indigo-950 border border-indigo-700 hover:border-indigo-500 focus:border-indigo-400 focus:outline-none rounded-lg p-1.5 text-sm font-semibold transition-colors placeholder:text-indigo-600"
+        />
+      </div>
 
       <div className="flex justify-between items-center w-full">
         <p className="font-medium">Power-ups</p>
