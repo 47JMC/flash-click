@@ -173,6 +173,55 @@ export async function rejoinRoom(
   }
 }
 
+export async function leaveRoom(
+  io: Server,
+  socket: Socket,
+  data: { code: string },
+) {
+  try {
+    const user = socket.data.user;
+    const room = await Room.findOne({ code: data.code });
+
+    if (!room) return;
+
+    const playerIndex = room.players.findIndex((p) => p.id === user.id);
+    if (playerIndex === -1) return;
+
+    const player = room.players[playerIndex];
+    const wasHost = player.isHost;
+
+    // Remove player from room
+    await Room.updateOne(
+      { code: data.code },
+      { $pull: { players: { id: user.id } } },
+    );
+
+    // Notify other players
+    io.to(data.code).emit("player_left", {
+      playerId: user.id,
+      wasHost,
+    });
+
+    // If host left and game hasn't started, assign new host
+    if (wasHost && room.status === "waiting") {
+      const updatedRoom = await Room.findOne({ code: data.code });
+      if (updatedRoom && updatedRoom.players.length > 0) {
+        await Room.updateOne(
+          { code: data.code },
+          { $set: { "players.0.isHost": true } },
+        );
+        io.to(data.code).emit("new_host", {
+          newHostId: updatedRoom.players[0].id,
+        });
+      }
+    }
+
+    socket.leave(data.code);
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 export async function usePowerUp(
   io: Server,
   socket: Socket,

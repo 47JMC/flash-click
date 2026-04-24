@@ -48,16 +48,36 @@ function LobbyClient({ room }: LobbyClientProps) {
       console.error(message);
     });
 
+    socket.on("player_left", ({ playerId }: { playerId: string }) => {
+      setPlayers((prev) => prev.filter((p) => p.id !== playerId));
+    });
+
+    socket.on("new_host", ({ newHostId }: { newHostId: string }) => {
+      setPlayers((prev) =>
+        prev.map((p) => ({
+          ...p,
+          isHost: p.id === newHostId,
+        })),
+      );
+    });
+
     return () => {
       socket.off("connect");
       socket.off("player_joined");
       socket.off("game_start");
       socket.off("error");
+      socket.off("player_left");
+      socket.off("new_host");
     };
   }, [room.code, router]);
 
   const handleStart = () => {
     socketRef.current?.emit("start_game");
+  };
+
+  const handleLeave = () => {
+    socketRef.current?.emit("leave_room", { code: room.code });
+    router.push("/");
   };
 
   return (
@@ -162,6 +182,13 @@ function LobbyClient({ room }: LobbyClientProps) {
       {!isHost && (
         <p className="text-sm text-gray-600">Waiting for host to start...</p>
       )}
+
+      <button
+        onClick={handleLeave}
+        className="bg-red-400 rounded-lg border-4 border-red-600 hover:bg-red-500 transition-all px-4 py-2 m-4"
+      >
+        Leave Room
+      </button>
     </div>
   );
 }
