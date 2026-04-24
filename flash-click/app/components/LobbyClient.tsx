@@ -67,7 +67,10 @@ function LobbyClient({ room }: LobbyClientProps) {
         <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">
           Room code
         </p>
-        <p className="text-5xl font-bold tracking-widest text-white">
+        <p
+          onClick={() => navigator.clipboard.writeText(room.code)}
+          className="text-5xl font-bold tracking-widest text-white"
+        >
           {room.code}
         </p>
         <p className="text-xs text-gray-600 mt-2">

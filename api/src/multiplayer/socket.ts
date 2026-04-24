@@ -8,29 +8,23 @@ import {
   syncClicks,
   usePowerUp,
 } from "./handlers/roomHandlers.js";
-import { roomSockets } from "./state.js";
 import Room from "../models/Room.js";
-import { endGame } from "./handlers/gameHandlers.js";
+import { endGame, startGame } from "./handlers/gameHandlers.js";
 
 const DEV_MODE = process.env.DEV_MODE;
 
 async function handleDisconnect(io: Server, socket: Socket) {
+  try {
+    const room = await Room.findOne({
+      "players.socketId": socket.id,
+      status: { $in: ["running", "countdown"] },
+    });
 
-  for (const [code, sockets] of roomSockets) {
-    if (DEV_MODE) {
-      const room = await Room.findOne({ code });
-      if (room?.status === "running" || room?.status === "countdown") {
-        await endGame(io, code, socket.id);
-        break;
-      }
-    } else {
-      if (sockets.host !== socket.id && sockets.guest !== socket.id) continue;
-      const room = await Room.findOne({ code });
-      if (!room) return;
-      if (room.status !== "running" && room.status !== "countdown") return;
-      await endGame(io, code, socket.id);
-      break;
-    }
+    if (!room) return;
+
+    await endGame(io, room.code, socket.id);
+  } catch (error) {
+    console.log(error);
   }
 }
 
@@ -67,6 +61,7 @@ export function initSocket(io: Server) {
     socket.on("rejoin_room", (data) => rejoinRoom(io, socket, data));
 
     socket.on("use_powerup", (data) => usePowerUp(io, socket, data));
+    socket.on("start_game", () => startGame(io, socket));
 
     socket.on("disconnect", () => handleDisconnect(io, socket));
   });

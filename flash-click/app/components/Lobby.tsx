@@ -12,7 +12,6 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 function Lobby() {
   const socketRef = useRef<Socket | null>(null);
-  const [roomCode, setRoomCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [settings, setSettings] = useState<Settings>({
     duration: 15,
@@ -21,19 +20,9 @@ function Lobby() {
     powerups: false,
     maxPlayers: 2,
   });
-  const [status, setStatus] = useState<
-    "idle" | "creating" | "waiting" | "joining"
-  >("idle");
-
+  const [status, setStatus] = useState<"idle" | "creating">("idle");
   const router = useRouter();
-  const routerRef = useRef(router);
-  const roomCodeRef = useRef(roomCode);
-
   const { user, loading } = useAuth();
-
-  useEffect(() => {
-    roomCodeRef.current = roomCode;
-  }, [roomCode]);
 
   useEffect(() => {
     const socket = initSocket();
@@ -41,17 +30,11 @@ function Lobby() {
     socket.connect();
 
     socket.on("room_created", ({ code }: { code: string }) => {
-      setRoomCode(code);
-      setStatus("waiting");
-      routerRef.current.push(`/lobby/${code}`);
-    });
-
-    socket.on("player_joined", () => {
-      routerRef.current.push(`/game/${roomCodeRef.current}`);
+      router.push(`/lobby/${code}`);
     });
 
     socket.on("room_joined", ({ code }: { code: string }) => {
-      routerRef.current.push(`/lobby/${code}`);
+      router.push(`/lobby/${code}`);
     });
 
     socket.on("error", ({ message }: { message: string }) => {
@@ -61,11 +44,10 @@ function Lobby() {
 
     return () => {
       socket.off("room_created");
-      socket.off("player_joined");
       socket.off("room_joined");
       socket.off("error");
     };
-  }, []);
+  }, [router]);
 
   const handleCreateRoom = () => {
     socketRef.current?.emit("create_room", { settings });
@@ -74,7 +56,6 @@ function Lobby() {
   const handleJoinRoom = () => {
     if (!joinCode.trim()) return;
     socketRef.current?.emit("join_room", { code: joinCode.toUpperCase() });
-    setStatus("joining");
   };
 
   if (loading) return <p>Loading...</p>;
@@ -116,20 +97,6 @@ function Lobby() {
               onConfirm={handleCreateRoom}
               onBack={() => setStatus("idle")}
             />
-          )}
-
-          {status === "waiting" && (
-            <div className="text-white text-center">
-              <p className="text-lg">Room created!</p>
-              <p className="tracking-widest text-3xl font-bold text-green-400">
-                {roomCode}
-              </p>
-              <p className="text-sm text-indigo-300">Waiting for opponent...</p>
-            </div>
-          )}
-
-          {status === "joining" && (
-            <p className="text-white text-center">Joining room {joinCode}...</p>
           )}
         </div>
       ) : (

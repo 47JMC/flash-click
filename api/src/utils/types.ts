@@ -4,12 +4,13 @@ export type UserData = {
   avatar: string;
   global_name: string;
   clicks: number;
+  isHost: boolean;
+  socketId: string;
 };
 
 export type RoomType = {
   code: String;
-  host: UserData;
-  guest: UserData;
+  players: UserData;
   status: "waiting" | "countdown" | "running" | "done";
   duration: Number;
   countdown: { type: Number; default: 3 };
@@ -25,4 +26,5 @@ export type Settings = {
   countdown: number;
   clickGoal: number | null;
   powerups: boolean;
+  maxPlayers: number;
 };

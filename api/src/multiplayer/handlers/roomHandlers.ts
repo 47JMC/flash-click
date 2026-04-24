@@ -1,9 +1,6 @@
 import { Server, Socket } from "socket.io";
 import Room from "../../models/Room.js";
 
-import { roomSockets } from "../state.js";
-import { startGameTimer } from "./timerHandlers.js";
-
 import { Settings } from "../../utils/types.js";
 import { endGame } from "./gameHandlers.js";
 
@@ -18,25 +15,33 @@ export async function createRoom(
     const user = socket.data.user;
 
     const checkAlreadyInRoom = await Room.findOne({
-      $or: [{ "host.id": user.id }, { "guest.id": user.id }],
+      "players.id": user.id,
       status: { $ne: "done" },
     });
 
     if (checkAlreadyInRoom) {
-      return io
-        .to(socket.id)
-        .emit("error", { message: "User already in a room" });
+      return socket.emit("error", { message: "User already in a room" });
     }
 
     let randomCode = Math.random().toString(36).slice(2, 6).toUpperCase();
-
     while (await Room.exists({ code: randomCode })) {
       randomCode = Math.random().toString(36).slice(2, 6).toUpperCase();
     }
 
     const createdRoom = new Room({
       code: randomCode,
-      host: user,
+      players: [
+        {
+          id: user.id,
+          username: user.username,
+          global_name: user.global_name,
+          avatar: user.avatar,
+          clicks: 0,
+          socketId: socket.id,
+          isHost: true,
+        },
+      ],
+      maxPlayers: settings.maxPlayers,
       duration: settings.duration,
       clickGoal: settings.clickGoal,
       powerups: settings.powerups,
@@ -46,8 +51,6 @@ export async function createRoom(
     await createdRoom.save();
 
     socket.join(randomCode);
-    roomSockets.set(randomCode, { host: socket.id });
-
     socket.emit("room_created", { code: randomCode });
   } catch (error) {
     console.log(error);
@@ -60,47 +63,59 @@ export async function joinRoom(
   socket: Socket,
   data: { code: string },
 ) {
-  const user = socket.data.user;
+  try {
+    const user = socket.data.user;
 
-  const checkAlreadyInRoom = await Room.findOne({
-    $or: [{ "host.id": user.id }, { "guest.id": user.id }],
-    status: { $ne: "done" },
-  });
+    const checkAlreadyInRoom = await Room.findOne({
+      "players.id": user.id,
+      status: { $ne: "done" },
+    });
 
-  if (checkAlreadyInRoom && !DEV_MODE) {
-    return io
-      .to(socket.id)
-      .emit("error", { message: "User already in a room" });
+    if (checkAlreadyInRoom && !DEV_MODE) {
+      return socket.emit("error", { message: "User already in a room" });
+    }
+
+    const room = await Room.findOne({
+      code: data.code,
+      status: { $ne: "done" },
+    });
+
+    if (!room) return socket.emit("error", { message: "Room doesn't exist" });
+
+    if (room.players.length >= room.maxPlayers)
+      return socket.emit("error", { message: "Room is full" });
+
+    await Room.updateOne(
+      { code: data.code },
+      {
+        $push: {
+          players: {
+            id: user.id,
+            username: user.username,
+            global_name: user.global_name,
+            avatar: user.avatar,
+            clicks: 0,
+            socketId: socket.id,
+            isHost: false,
+          },
+        },
+      },
+    );
+
+    socket.join(room.code);
+
+    // tell everyone else someone joined
+    socket.to(room.code).emit("player_joined", {
+      username: user.username,
+      avatar: user.avatar,
+    });
+
+    // tell the guest they successfully joined
+    socket.emit("room_joined", { code: room.code });
+  } catch (error) {
+    console.log(error);
+    return socket.emit("error", { message: "Failed to join room" });
   }
-
-  const room = await Room.findOne({ code: data.code, status: { $ne: "done" } });
-
-  if (!room)
-    return io.to(socket.id).emit("error", { message: "Room doenst exists!" });
-
-  if (room.guest)
-    return io.to(socket.id).emit("error", { message: "Room is full" });
-
-  room.guest = user;
-  await room.save();
-
-  const existing = roomSockets.get(room.code);
-  roomSockets.set(room.code, { host: existing!.host, guest: socket.id });
-
-  socket.join(room.code);
-
-  const roomSocket = roomSockets.get(room.code);
-  if (!roomSocket)
-    return io.emit("error", { message: "Room socket not found" });
-
-  // tell the host someone joined
-  io.to(roomSocket.host).emit("player_joined", {
-    username: user.username,
-    avatar: user.avatar,
-  });
-
-  // tell the guest they successfully joined
-  socket.emit("room_joined", { code: room.code });
 }
 
 export async function syncClicks(
@@ -108,27 +123,30 @@ export async function syncClicks(
   socket: Socket,
   data: { code: string; clicks: number },
 ) {
-  const roomSocket = roomSockets.get(data.code);
-  const room = await Room.findOne({ code: data.code });
+  try {
+    const room = await Room.findOne({ code: data.code });
+    if (!room) return socket.emit("error", { message: "Room not found" });
 
-  if (!room) return socket.emit("error", { message: "Room not found" });
-  if (!roomSocket) return socket.emit("error", { message: "Room not found" });
+    // update this player's clicks
+    await Room.updateOne(
+      { code: data.code, "players.id": socket.data.user.id },
+      { $set: { "players.$.clicks": data.clicks } },
+    );
 
-  const oppSocketId =
-    roomSocket.host === socket.id ? roomSocket.guest : roomSocket.host;
+    // check click goal
+    if (room.clickGoal > 0 && data.clicks >= room.clickGoal) {
+      await endGame(io, data.code);
+      return;
+    }
 
-  if (!oppSocketId) return;
-
-  const isHost = roomSocket.host === socket.id;
-  const field = isHost ? "host.clicks" : "guest.clicks";
-  await Room.updateOne({ code: data.code }, { $set: { [field]: data.clicks } });
-
-  if (room.clickGoal > 0 && data.clicks >= room.clickGoal) {
-    // end the game early
-    endGame(io, data.code); // or a separate endGame function
+    // broadcast to all other players in the room
+    socket.to(data.code).emit("update_clicks", {
+      playerId: socket.data.user.id,
+      clicks: data.clicks,
+    });
+  } catch (error) {
+    console.log(error);
   }
-
-  io.to(oppSocketId).emit("update_clicks", { clicks: data.clicks });
 }
 
 export async function rejoinRoom(
@@ -136,32 +154,23 @@ export async function rejoinRoom(
   socket: Socket,
   data: { code: string },
 ) {
-  const room = await Room.findOne({ code: data.code });
-  if (!room) return socket.emit("error", { message: "Room not found" });
+  try {
+    const room = await Room.findOne({ code: data.code });
+    if (!room) return socket.emit("error", { message: "Room not found" });
 
-  let isHost = room.host.id === socket.data.user.id;
+    await Room.updateOne(
+      { code: data.code, "players.id": socket.data.user.id },
+      { $set: { "players.$.socketId": socket.id } },
+    );
 
-  const existing = roomSockets.get(data.code);
+    socket.join(data.code);
 
-  if (DEV_MODE) isHost = !existing?.host || existing.host === socket.id;
-
-  if (isHost) {
-    roomSockets.set(data.code, {
-      host: socket.id,
-      guest: existing?.guest || "",
-    });
-  } else {
-    roomSockets.set(data.code, {
-      host: existing?.host || "",
-      guest: socket.id,
-    });
+    const updatedRoom = await Room.findOne({ code: data.code });
+    const allJoined = updatedRoom?.players.every((p) => p.socketId);
+  } catch (error) {
+    console.log(error);
+    return socket.emit("error", { message: "Failed to rejoin room" });
   }
-  const updated = roomSockets.get(data.code);
-  if (updated?.host && updated?.guest) {
-    setTimeout(() => startGameTimer(io, data.code), 500);
-  }
-
-  socket.join(data.code);
 }
 
 export async function usePowerUp(
@@ -169,31 +178,29 @@ export async function usePowerUp(
   socket: Socket,
   data: { code: string; type: string },
 ) {
-  const room = await Room.findOne({
-    code: data.code,
-  });
+  try {
+    const room = await Room.findOne({ code: data.code });
+    if (!room) return socket.emit("error", { message: "Room not found" });
 
-  const roomSocket = roomSockets.get(data.code);
+    if (room.status !== "running")
+      return socket.emit("error", { message: "Game not running" });
+    if (!room.powerups)
+      return socket.emit("error", { message: "Power-ups disabled" });
 
-  if (!room || !roomSocket)
-    return socket.emit("error", { message: "Room not found!" });
+    const player = room.players.find((p) => p.id === socket.data.user.id);
+    if (!player) return socket.emit("error", { message: "Player not found" });
 
-  if (room.status !== "running")
-    return socket.emit("error", { message: "Game not running" });
-  if (!room.powerups)
-    return socket.emit("error", { message: "Power-ups disabled" });
+    if (player.clicks < 15)
+      return socket.emit("error", { message: "Not enough clicks" });
 
-  const isHost = roomSocket.host === socket.id;
-  const myClicks = isHost ? room.host.clicks : room.guest?.clicks;
+    await Room.updateOne(
+      { code: data.code, "players.id": socket.data.user.id },
+      { $inc: { "players.$.clicks": -15 } },
+    );
 
-  if (!myClicks)
-    return socket.emit("error", { message: "myClicks is undefined" });
-
-  if (myClicks < 15)
-    return socket.emit("error", { message: "Not enough clicks" });
-
-  const field = isHost ? "host.clicks" : "guest.clicks";
-  await Room.updateOne({ code: data.code }, { $inc: { [field]: -15 } });
-
-  socket.emit("powerup_active", { type: "double", duration: 3000 });
+    socket.emit("powerup_active", { type: data.type, duration: 3000 });
+  } catch (error) {
+    console.log(error);
+    return socket.emit("error", { message: "Failed to use power-up" });
+  }
 }

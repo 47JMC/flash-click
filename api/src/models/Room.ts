@@ -1,12 +1,24 @@
 // src/models/Room.ts
 import { Schema, model } from "mongoose";
-import { userSchema } from "./User.js";
+
+const playerSchema = new Schema({
+  id: { type: String, required: true },
+  username: { type: String, required: true },
+  global_name: { type: String },
+  avatar: {
+    type: String,
+    default: "https://cdn.discordapp.com/embed/avatars/0.png",
+  },
+  clicks: { type: Number, default: 0 },
+  socketId: { type: String },
+  isHost: { type: Boolean, default: false },
+});
 
 const roomSchema = new Schema(
   {
     code: { type: String, required: true, unique: true },
-    host: { type: userSchema, required: true },
-    guest: { type: userSchema, default: null },
+    players: [playerSchema],
+    maxPlayers: { type: Number, default: 2 },
     status: {
       type: String,
       enum: ["waiting", "countdown", "running", "done"],
@@ -16,7 +28,6 @@ const roomSchema = new Schema(
     countdown: { type: Number, default: 3 },
     clickGoal: { type: Number, default: 0 },
     powerups: { type: Boolean, default: false },
-    startedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
