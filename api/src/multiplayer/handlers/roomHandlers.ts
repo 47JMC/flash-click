@@ -190,7 +190,6 @@ export async function leaveRoom(
     const player = room.players[playerIndex];
     const wasHost = player.isHost;
 
-    // Remove player from room
     await Room.updateOne(
       { code: data.code },
       { $pull: { players: { id: user.id } } },
@@ -202,7 +201,6 @@ export async function leaveRoom(
       wasHost,
     });
 
-    // If host left and game hasn't started, assign new host
     if (wasHost && room.status === "waiting") {
       const updatedRoom = await Room.findOne({ code: data.code });
       if (updatedRoom && updatedRoom.players.length > 0) {
@@ -222,6 +220,38 @@ export async function leaveRoom(
   }
 }
 
+export async function kickPlayer(
+  io: Server,
+  socket: Socket,
+  data: { code: string; playerId: string },
+) {
+  try {
+    const room = await Room.findOne({ code: data.code });
+    if (!room) return;
+
+    const kicker = room.players.find((p) => p.id === socket.data.user.id);
+    if (!kicker?.isHost)
+      return socket.emit("error", { message: "Only host can kick" });
+
+    const kicked = room.players.find((p) => p.id === data.playerId);
+    if (!kicked) return;
+
+    await Room.updateOne(
+      { code: data.code },
+      { $pull: { players: { id: data.playerId } } },
+    );
+
+    // tell the kicked player
+    if (kicked.socketId) {
+      io.to(kicked.socketId).emit("kicked");
+    }
+
+    // tell everyone else
+    socket.to(data.code).emit("player_left", { playerId: data.playerId });
+  } catch (error) {
+    console.log(error);
+  }
+}
 export async function usePowerUp(
   io: Server,
   socket: Socket,

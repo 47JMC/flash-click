@@ -4,6 +4,7 @@ import { verifyUser } from "../utils/verifyUser.js";
 import {
   createRoom,
   joinRoom,
+  kickPlayer,
   leaveRoom,
   rejoinRoom,
   syncClicks,
@@ -61,6 +62,7 @@ export function initSocket(io: Server) {
     socket.on("sync_clicks", (data) => syncClicks(io, socket, data));
     socket.on("rejoin_room", (data) => rejoinRoom(io, socket, data));
     socket.on("leave_room", (data) => leaveRoom(io, socket, data));
+    socket.on("kick_player", (data) => kickPlayer(io, socket, data));
 
     socket.on("use_powerup", (data) => usePowerUp(io, socket, data));
     socket.on("start_game", () => startGame(io, socket));

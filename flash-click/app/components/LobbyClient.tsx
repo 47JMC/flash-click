@@ -2,11 +2,12 @@
 
 import { initSocket } from "@/lib/socket";
 import { Room, User } from "@/lib/types";
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
 import { useAuth } from "./UserProvider";
 import { useRouter } from "next/navigation";
+
+import PlayerCard from "./PlayerCard";
 
 type LobbyClientProps = {
   room: Room;
@@ -48,6 +49,10 @@ function LobbyClient({ room }: LobbyClientProps) {
       console.error(message);
     });
 
+    socket.on("kicked", () => {
+      router.push("/");
+    });
+
     socket.on("player_left", ({ playerId }: { playerId: string }) => {
       setPlayers((prev) => prev.filter((p) => p.id !== playerId));
     });
@@ -78,6 +83,10 @@ function LobbyClient({ room }: LobbyClientProps) {
   const handleLeave = () => {
     socketRef.current?.emit("leave_room", { code: room.code });
     router.push("/");
+  };
+
+  const handleKick = (playerId: string) => {
+    socketRef.current?.emit("kick_player", { code: room.code, playerId });
   };
 
   return (
@@ -126,32 +135,13 @@ function LobbyClient({ room }: LobbyClientProps) {
           Players — {players.length}/{room.maxPlayers}
         </p>
         {players.map((p, i) => (
-          <div
+          <PlayerCard
+            user={user}
+            player={p}
             key={`${p.id}-${i}`}
-            className="flex items-center gap-3 bg-gray-900 rounded-lg px-4 py-3 border border-gray-800"
-          >
-            <Image
-              src={p.avatar}
-              alt={p.username}
-              width={36}
-              height={36}
-              className="rounded-full"
-            />
-            <div className="flex-1">
-              <p className="text-sm font-semibold">
-                {p.global_name ?? p.username}
-              </p>
-              <p className="text-xs text-gray-500">@{p.username}</p>
-            </div>
-            {p.isHost && (
-              <span className="text-xs bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-700">
-                host
-              </span>
-            )}
-            {p.id === user?.id && (
-              <span className="text-xs text-gray-600">you</span>
-            )}
-          </div>
+            amHost={isHost ?? false}
+            onPlayerKick={handleKick}
+          />
         ))}
 
         {/* Empty slots */}
