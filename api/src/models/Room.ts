@@ -12,6 +12,7 @@ const playerSchema = new Schema({
   clicks: { type: Number, default: 0 },
   socketId: { type: String },
   isHost: { type: Boolean, default: false },
+  nameplateUrl: { type: String, default: null },
 });
 
 const roomSchema = new Schema(

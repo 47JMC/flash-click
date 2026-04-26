@@ -7,6 +7,13 @@ import { verifyUser } from "../utils/verifyUser.js";
 
 const authRouter = Router();
 
+type DiscordNameplate = {
+  sku_id: string;
+  asset: string;
+  label: string;
+  pallete: string;
+};
+
 authRouter.get("/login", (req, res) => {
   const { CLIENT_ID, REDIRECT_URI } = process.env;
 
@@ -68,11 +75,18 @@ authRouter.get("/callback", async (req, res) => {
     return res.status(500).json({ error: "Failed to fetch user data" });
   }
 
-  const userInfo = (await userRes.json()) as UserData;
+  const userInfo = (await userRes.json()) as UserData & {
+    collectibles?: { nameplate: DiscordNameplate | null };
+  };
 
   const existingUser = await User.findOne({ id: userInfo.id });
 
   const avatarUrl = `https://cdn.discordapp.com/avatars/${userInfo.id}/${userInfo.avatar}`;
+
+  let nameplateUrl: string | null = null;
+
+  if (userInfo.collectibles && userInfo.collectibles.nameplate)
+    nameplateUrl = `https://cdn.discordapp.com/assets/collectibles/${userInfo.collectibles.nameplate.asset}`;
 
   if (!existingUser) {
     const newUser = new User({
@@ -80,12 +94,14 @@ authRouter.get("/callback", async (req, res) => {
       username: userInfo.username,
       global_name: userInfo.global_name,
       avatar: avatarUrl,
+      nameplateUrl,
     });
 
     await newUser.save();
   } else {
     existingUser.username = userInfo.username;
     existingUser.avatar = avatarUrl;
+    existingUser.nameplateUrl = nameplateUrl;
     await existingUser.save();
   }
 

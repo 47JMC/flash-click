@@ -6,6 +6,7 @@ export type UserData = {
   clicks: number;
   isHost: boolean;
   socketId: string;
+  nameplateUrl: string | null;
 };
 
 export type RoomType = {

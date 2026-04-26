@@ -10,6 +10,7 @@ const userSchema = new Schema(
       default: "https://cdn.discordapp.com/embed/avatars/0.png",
     },
     clicks: { type: Number, default: 0 },
+    nameplateUrl: { type: String, default: null },
   },
   { timestamps: true },
 );
