@@ -29,9 +29,15 @@ function GameClient({ room }: GameClientProps) {
   >("waiting");
   const [results, setResults] = useState<ResultsType | null>(null);
   const [doubleActive, setDoubleActive] = useState(false);
+  const [ghostActive, setGhostActive] = useState(false);
+  const [overclockActive, setOverclockActive] = useState(false);
 
   const clicksRef = useRef(0);
   const socketRef = useRef<Socket | null>(null);
+  const ghostActiveRef = useRef(false);
+  const overclockRef = useRef(false);
+  const lastSyncedClicks = useRef(0);
+
   const { user } = useAuth();
 
   const me = room.players.find((p) => p.id === user?.id);
@@ -39,7 +45,7 @@ function GameClient({ room }: GameClientProps) {
 
   const addClick = () => {
     if (phase !== "running") return;
-    const increment = doubleActive ? 2 : 1;
+    const increment = overclockRef.current ? 3 : doubleActive ? 2 : 1;
     clicksRef.current += increment;
     setMyClicks(clicksRef.current);
   };
@@ -92,15 +98,38 @@ function GameClient({ room }: GameClientProps) {
           setDoubleActive(true);
           setTimeout(() => setDoubleActive(false), duration);
         }
+
+        if (type === "ghost") {
+          ghostActiveRef.current = true;
+          setGhostActive(true);
+          setTimeout(() => {
+            ghostActiveRef.current = false;
+            setGhostActive(false);
+          }, duration);
+        }
+
+        if (type === "overclock") {
+          overclockRef.current = true;
+          setOverclockActive(true);
+          setTimeout(() => {
+            overclockRef.current = false;
+            setOverclockActive(false);
+          }, duration);
+        }
       },
     );
 
     const interval = setInterval(() => {
       if (clicksRef.current > 0) {
+        const clicksToSend = ghostActiveRef.current
+          ? lastSyncedClicks.current
+          : clicksRef.current;
         socketRef.current?.emit("sync_clicks", {
           code: room.code,
-          clicks: clicksRef.current,
+          clicks: clicksToSend,
         });
+        if (!ghostActiveRef.current)
+          lastSyncedClicks.current = clicksRef.current;
       }
     }, 500);
 
@@ -148,7 +177,7 @@ function GameClient({ room }: GameClientProps) {
               .sort((a, b) => b.clicks - a.clicks)
               .map((p, i) => (
                 <div
-                  key={p.id}
+                  key={`${p.id}-${i}`}
                   className="flex justify-between items-center bg-[#2a0a3a] rounded-lg px-4 py-2 border border-purple-900"
                 >
                   <div className="flex items-center gap-2">
@@ -281,10 +310,37 @@ function GameClient({ room }: GameClientProps) {
       {room.powerups && (
         <PowerupsBox>
           <Powerup
+            type="double"
+            label="Double"
+            emoji="⚡"
+            description="Each click counts as 2 for 3 seconds"
+            cost={15}
             onUse={handlePowerupUse}
             myClicks={myClicks}
             phase={phase}
-            doubleActive={doubleActive}
+            powerupActive={doubleActive}
+          />
+          <Powerup
+            type="ghost"
+            label="Ghost"
+            emoji="👻"
+            description="Hide your click count for 5 seconds"
+            cost={20}
+            onUse={handlePowerupUse}
+            myClicks={myClicks}
+            phase={phase}
+            powerupActive={ghostActive}
+          />
+          <Powerup
+            type="overclock"
+            label="Overclock"
+            emoji="🔥"
+            description="3x clicks for 2 seconds"
+            cost={25}
+            onUse={handlePowerupUse}
+            myClicks={myClicks}
+            phase={phase}
+            powerupActive={overclockActive}
           />
         </PowerupsBox>
       )}

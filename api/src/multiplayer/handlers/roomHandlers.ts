@@ -3,8 +3,18 @@ import Room from "../../models/Room.js";
 
 import { Settings } from "../../utils/types.js";
 import { endGame } from "./gameHandlers.js";
+import { playerClickHistory } from "../state.js";
 
 const DEV_MODE = process.env.DEV_MODE;
+
+const POWERUP_CONFIG: Record<
+  string,
+  { cost: number; duration: number; cooldown: number }
+> = {
+  double: { cost: 15, duration: 3000, cooldown: 3000 },
+  ghost: { cost: 20, duration: 5000, cooldown: 2000 },
+  overclock: { cost: 25, duration: 2000, cooldown: 2000 },
+};
 
 export async function createRoom(
   io: Server,
@@ -129,22 +139,43 @@ export async function syncClicks(
     const room = await Room.findOne({ code: data.code });
     if (!room) return socket.emit("error", { message: "Room not found" });
 
-    // update this player's clicks
+    const key = `${data.code}:${socket.id}`;
+    const lastClicks = playerClickHistory.get(key) ?? 0;
+
+    const delta = data.clicks - lastClicks;
+    const maxDeltaPerSync = 20 * 3 * 0.5; // 20cps * max multiplier * 500ms sync interval
+
+    let validatedClicks: number;
+
+    if (delta > maxDeltaPerSync) {
+      validatedClicks = lastClicks + Math.floor(maxDeltaPerSync);
+    } else {
+      validatedClicks = data.clicks;
+    }
+
+    if (delta < 0) {
+      socket.to(data.code).emit("update_clicks", {
+        playerId: socket.data.user.id,
+        clicks: lastClicks,
+      });
+      return;
+    }
+
+    playerClickHistory.set(key, validatedClicks);
+
     await Room.updateOne(
       { code: data.code, "players.id": socket.data.user.id },
-      { $set: { "players.$.clicks": data.clicks } },
+      { $set: { "players.$.clicks": validatedClicks } },
     );
 
-    // check click goal
-    if (room.clickGoal > 0 && data.clicks >= room.clickGoal) {
+    if (room.clickGoal > 0 && validatedClicks >= room.clickGoal) {
       await endGame(io, data.code);
       return;
     }
 
-    // broadcast to all other players in the room
     socket.to(data.code).emit("update_clicks", {
       playerId: socket.data.user.id,
-      clicks: data.clicks,
+      clicks: validatedClicks,
     });
   } catch (error) {
     console.log(error);
@@ -254,6 +285,7 @@ export async function kickPlayer(
     console.log(error);
   }
 }
+
 export async function usePowerUp(
   io: Server,
   socket: Socket,
@@ -271,15 +303,21 @@ export async function usePowerUp(
     const player = room.players.find((p) => p.id === socket.data.user.id);
     if (!player) return socket.emit("error", { message: "Player not found" });
 
-    if (player.clicks < 15)
+    const powerup = POWERUP_CONFIG[data.type];
+    if (!powerup) return socket.emit("error", { message: "Invalid power-up" });
+
+    if (player.clicks < powerup.cost)
       return socket.emit("error", { message: "Not enough clicks" });
 
     await Room.updateOne(
       { code: data.code, "players.id": socket.data.user.id },
-      { $inc: { "players.$.clicks": -15 } },
+      { $inc: { "players.$.clicks": -powerup.cost } },
     );
 
-    socket.emit("powerup_active", { type: data.type, duration: 3000 });
+    socket.emit("powerup_active", {
+      type: data.type,
+      duration: powerup.duration,
+    });
   } catch (error) {
     console.log(error);
     return socket.emit("error", { message: "Failed to use power-up" });

@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import Room from "../../models/Room.js";
-import { activeTimers } from "../state.js";
+import { activeTimers, playerClickHistory } from "../state.js";
 import { startGameTimer } from "./timerHandlers.js";
 
 const DEV_MODE = process.env.DEV_MODE;
@@ -60,10 +60,11 @@ export async function endGame(
     })),
   });
 
-  setTimeout(
-    async () => {
-      await Room.deleteOne({ code });
-    },
-    2 * 60 * 1000,
-  );
+  setTimeout(async () => {
+    await Room.deleteOne({ code });
+  }, 500);
+
+  for (const key of playerClickHistory.keys()) {
+    if (key.startsWith(code)) playerClickHistory.delete(key);
+  }
 }
