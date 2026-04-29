@@ -1,13 +1,27 @@
-import { User } from "@/lib/types";
+"use client";
 
-function UserProfile({ userData }: { userData: User }) {
+import Image from "next/image";
+import { useAuth } from "./UserProvider";
+
+function UserProfile() {
+  const { user, loading } = useAuth();
+
+  if (loading || !user) return null;
+
   return (
-    <div className="p-3 m-3">
-      <div className="flex font-fredoka font-medium justify-between">
+    <div className="flex items-center gap-3 p-3 bg-indigo-950 rounded-md">
+      <Image
+        src={user.avatar}
+        alt={user.username}
+        width={48}
+        height={48}
+        className="rounded-full"
+      />
+      <div className="flex flex-col font-fredoka font-medium">
         <p className="text-lg font-semibold">
-          {userData.global_name ?? userData.username}
+          {user.global_name ?? user.username}
         </p>
-        <p className="text-base text-gray-400">{userData.username}</p>
+        <p className="text-sm text-gray-400">@{user.username}</p>
       </div>
     </div>
   );
