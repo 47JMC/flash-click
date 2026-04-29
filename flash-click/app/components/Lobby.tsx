@@ -100,7 +100,12 @@ function Lobby() {
           )}
         </div>
       ) : (
-        <a href={`${API_BASE_URL}/auth/login`}>Login</a>
+        <a
+          className="p-2 m-2 bg-blue-600 hover:bg-blue-800 transition-colors rounded-lg text-center"
+          href={`${API_BASE_URL}/auth/login`}
+        >
+          Login
+        </a>
       )}
     </div>
   );
