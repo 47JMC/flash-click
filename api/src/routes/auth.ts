@@ -145,4 +145,9 @@ authRouter.get("/me", async (req, res) => {
   }
 });
 
+authRouter.get("/logout", (req, res) => {
+  res.clearCookie("token");
+  res.status(200).redirect(process.env.FRONTEND_URL || "/");
+});
+
 export default authRouter;

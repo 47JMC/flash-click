@@ -5,6 +5,7 @@ import { useAuth } from "./UserProvider";
 import { useEffect, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
 import { useRouter } from "next/navigation";
+
 import RoomSettings from "./RoomSettings";
 import type { Settings } from "@/lib/types";
 
