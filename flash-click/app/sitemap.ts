@@ -1,7 +1,7 @@
 export default function sitemap() {
   return [
     {
-      url: "https://flash-click.vercel.app/",
+      url: "https://flash-click.vercel.app",
       lastModified: new Date(),
     },
   ];
