@@ -3,7 +3,11 @@ import Room from "../../models/Room.js";
 
 import { Settings } from "../../utils/types.js";
 import { endGame } from "./gameHandlers.js";
-import { playerClickHistory } from "../state.js";
+import {
+  activePowerups,
+  playerClickHistory,
+  playerLastSyncTime,
+} from "../state.js";
 
 const DEV_MODE = process.env.DEV_MODE;
 
@@ -118,8 +122,14 @@ export async function joinRoom(
 
     // tell everyone else someone joined
     socket.to(room.code).emit("player_joined", {
+      id: user.id,
       username: user.username,
+      global_name: user.global_name,
       avatar: user.avatar,
+      nameplateUrl: user.nameplateUrl,
+      clicks: 0,
+      isHost: false,
+      socketId: socket.id,
     });
 
     // tell the guest they successfully joined
@@ -140,18 +150,26 @@ export async function syncClicks(
     if (!room) return socket.emit("error", { message: "Room not found" });
 
     const key = `${data.code}:${socket.id}`;
+    const activePowerup = activePowerups.get(key);
+    const isExpired = !activePowerup || Date.now() > activePowerup.expiresAt;
     const lastClicks = playerClickHistory.get(key) ?? 0;
 
+    const multiplier =
+      !room.powerups || isExpired
+        ? 1
+        : activePowerup.type === "overclock"
+          ? 3
+          : activePowerup.type === "double"
+            ? 2
+            : 1;
+
+    const now = Date.now();
+    const lastSyncTime = playerLastSyncTime.get(key) ?? now;
+    const elapsedMs = lastSyncTime === now ? 500 : now - lastSyncTime;
+
+    playerLastSyncTime.set(key, now);
+
     const delta = data.clicks - lastClicks;
-    const maxDeltaPerSync = 20 * 3 * 0.5; // 20cps * max multiplier * 500ms sync interval
-
-    let validatedClicks: number;
-
-    if (delta > maxDeltaPerSync) {
-      validatedClicks = lastClicks + Math.floor(maxDeltaPerSync);
-    } else {
-      validatedClicks = data.clicks;
-    }
 
     if (delta < 0) {
       socket.to(data.code).emit("update_clicks", {
@@ -161,7 +179,17 @@ export async function syncClicks(
       return;
     }
 
+    const maxCPS = 18 * multiplier;
+    const maxAllowedDelta = Math.floor((maxCPS * elapsedMs) / 1000);
+
+    const validatedClicks =
+      delta > maxAllowedDelta ? lastClicks + maxAllowedDelta : data.clicks;
+
     playerClickHistory.set(key, validatedClicks);
+
+    console.log(
+      `Player ${socket.id} in room ${data.code} clicked. Reported: ${data.clicks}, Validated: ${validatedClicks}, Multiplier: ${multiplier}, ElapsedMs: ${elapsedMs}`,
+    );
 
     await Room.updateOne(
       { code: data.code, "players.id": socket.data.user.id },
@@ -197,9 +225,6 @@ export async function rejoinRoom(
     );
 
     socket.join(data.code);
-
-    const updatedRoom = await Room.findOne({ code: data.code });
-    const allJoined = updatedRoom?.players.every((p) => p.socketId);
   } catch (error) {
     console.log(error);
     return socket.emit("error", { message: "Failed to rejoin room" });
@@ -313,6 +338,11 @@ export async function usePowerUp(
       { code: data.code, "players.id": socket.data.user.id },
       { $inc: { "players.$.clicks": -powerup.cost } },
     );
+
+    activePowerups.set(`${data.code}:${socket.id}`, {
+      type: data.type,
+      expiresAt: Date.now() + powerup.duration,
+    });
 
     socket.emit("powerup_active", {
       type: data.type,

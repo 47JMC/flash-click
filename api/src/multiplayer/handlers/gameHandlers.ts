@@ -1,6 +1,11 @@
 import { Server, Socket } from "socket.io";
 import Room from "../../models/Room.js";
-import { activeTimers, playerClickHistory } from "../state.js";
+import {
+  activePowerups,
+  activeTimers,
+  playerClickHistory,
+  playerLastSyncTime,
+} from "../state.js";
 import { startGameTimer } from "./timerHandlers.js";
 
 const DEV_MODE = process.env.DEV_MODE;
@@ -66,5 +71,13 @@ export async function endGame(
 
   for (const key of playerClickHistory.keys()) {
     if (key.startsWith(code)) playerClickHistory.delete(key);
+  }
+
+  for (const key of activePowerups.keys()) {
+    if (key.startsWith(code)) activePowerups.delete(key);
+  }
+
+  for (const key of playerLastSyncTime.keys()) {
+    if (key.startsWith(code)) playerLastSyncTime.delete(key);
   }
 }
