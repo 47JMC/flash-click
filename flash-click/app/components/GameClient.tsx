@@ -40,6 +40,8 @@ function GameClient({ room }: GameClientProps) {
 
   const { user } = useAuth();
 
+  const clickTimestamps = useRef<number[]>([]);
+
   const me = room.players.find((p) => p.id === user?.id);
   const others = room.players.filter((p) => p.id !== user?.id);
 
@@ -48,6 +50,11 @@ function GameClient({ room }: GameClientProps) {
     const increment = overclockRef.current ? 3 : doubleActive ? 2 : 1;
     clicksRef.current += increment;
     setMyClicks(clicksRef.current);
+    // record timestamp for each logical click
+    const now = Date.now();
+    for (let i = 0; i < increment; i++) {
+      clickTimestamps.current.push(now);
+    }
   };
 
   const handlePowerupUse = (type: string) =>
@@ -124,12 +131,20 @@ function GameClient({ room }: GameClientProps) {
         const clicksToSend = ghostActiveRef.current
           ? lastSyncedClicks.current
           : clicksRef.current;
+        const timestampsToSend = ghostActiveRef.current
+          ? []
+          : [...clickTimestamps.current];
+
         socketRef.current?.emit("sync_clicks", {
           code: room.code,
           clicks: clicksToSend,
+          timestamps: timestampsToSend,
         });
-        if (!ghostActiveRef.current)
+
+        if (!ghostActiveRef.current) {
           lastSyncedClicks.current = clicksRef.current;
+          clickTimestamps.current = [];
+        }
       }
     }, 500);
 

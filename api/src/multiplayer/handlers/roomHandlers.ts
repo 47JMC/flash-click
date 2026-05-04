@@ -8,6 +8,13 @@ import {
   playerClickHistory,
   playerLastSyncTime,
 } from "../state.js";
+import {
+  applyPenalty,
+  deltaCheck,
+  getElapsedMs,
+  getMultiplier,
+  varianceCheck,
+} from "../../utils/check-cheats.js";
 
 const DEV_MODE = process.env.DEV_MODE;
 
@@ -143,32 +150,14 @@ export async function joinRoom(
 export async function syncClicks(
   io: Server,
   socket: Socket,
-  data: { code: string; clicks: number },
+  data: { code: string; clicks: number; timestamps: number[] },
 ) {
   try {
     const room = await Room.findOne({ code: data.code });
     if (!room) return socket.emit("error", { message: "Room not found" });
 
     const key = `${data.code}:${socket.id}`;
-    const activePowerup = activePowerups.get(key);
-    const isExpired = !activePowerup || Date.now() > activePowerup.expiresAt;
     const lastClicks = playerClickHistory.get(key) ?? 0;
-
-    const multiplier =
-      !room.powerups || isExpired
-        ? 1
-        : activePowerup.type === "overclock"
-          ? 3
-          : activePowerup.type === "double"
-            ? 2
-            : 1;
-
-    const now = Date.now();
-    const lastSyncTime = playerLastSyncTime.get(key) ?? now;
-    const elapsedMs = lastSyncTime === now ? 500 : now - lastSyncTime;
-
-    playerLastSyncTime.set(key, now);
-
     const delta = data.clicks - lastClicks;
 
     if (delta < 0) {
@@ -179,17 +168,28 @@ export async function syncClicks(
       return;
     }
 
+    const activePowerup = activePowerups.get(key);
+    const multiplier = getMultiplier(room.powerups, activePowerup);
     const maxCPS = 18 * multiplier;
-    const maxAllowedDelta = Math.floor((maxCPS * elapsedMs) / 1000);
 
-    const validatedClicks =
-      delta > maxAllowedDelta ? lastClicks + maxAllowedDelta : data.clicks;
+    const now = Date.now();
+    const elapsedMs = getElapsedMs(key, now, playerLastSyncTime);
+
+    let validatedClicks: number;
+
+    if (varianceCheck(data.timestamps)) {
+      validatedClicks = applyPenalty(delta, lastClicks);
+    } else {
+      validatedClicks = deltaCheck(
+        delta,
+        lastClicks,
+        maxCPS,
+        elapsedMs,
+        data.clicks,
+      );
+    }
 
     playerClickHistory.set(key, validatedClicks);
-
-    console.log(
-      `Player ${socket.id} in room ${data.code} clicked. Reported: ${data.clicks}, Validated: ${validatedClicks}, Multiplier: ${multiplier}, ElapsedMs: ${elapsedMs}`,
-    );
 
     await Room.updateOne(
       { code: data.code, "players.id": socket.data.user.id },
