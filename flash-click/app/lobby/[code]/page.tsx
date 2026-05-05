@@ -1,5 +1,3 @@
-export const runtime = 'edge';
-
 import { UserProvider } from "@/app/components/UserProvider";
 import LobbyClient from "@/app/components/LobbyClient";
 
