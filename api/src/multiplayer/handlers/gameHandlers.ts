@@ -5,6 +5,7 @@ import {
   activeTimers,
   playerClickHistory,
   playerLastSyncTime,
+  flaggedPlayers,
 } from "../state.js";
 import { startGameTimer } from "./timerHandlers.js";
 
@@ -79,5 +80,9 @@ export async function endGame(
 
   for (const key of playerLastSyncTime.keys()) {
     if (key.startsWith(code)) playerLastSyncTime.delete(key);
+  }
+
+  for (const key of flaggedPlayers) {
+    if (key.startsWith(code)) flaggedPlayers.delete(key);
   }
 }

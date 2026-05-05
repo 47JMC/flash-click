@@ -5,6 +5,7 @@ import { Settings } from "../../utils/types.js";
 import { endGame } from "./gameHandlers.js";
 import {
   activePowerups,
+  flaggedPlayers,
   playerClickHistory,
   playerLastSyncTime,
 } from "../state.js";
@@ -168,18 +169,43 @@ export async function syncClicks(
       return;
     }
 
+    const now = Date.now();
+    const elapsedMs = getElapsedMs(key, now, playerLastSyncTime);
+
+    // if already flagged skip all checks
+    if (flaggedPlayers.has(key)) {
+      const validatedClicks = applyPenalty(delta, lastClicks);
+      playerClickHistory.set(key, validatedClicks);
+
+      await Room.updateOne(
+        { code: data.code, "players.id": socket.data.user.id },
+        { $set: { "players.$.clicks": validatedClicks } },
+      );
+
+      if (room.clickGoal > 0 && validatedClicks >= room.clickGoal) {
+        await endGame(io, data.code);
+        return;
+      }
+
+      socket.to(data.code).emit("update_clicks", {
+        playerId: socket.data.user.id,
+        clicks: validatedClicks,
+      });
+      return;
+    }
+
     const activePowerup = activePowerups.get(key);
     const multiplier = getMultiplier(room.powerups, activePowerup);
     const maxCPS = 18 * multiplier;
 
-    const now = Date.now();
-    const elapsedMs = getElapsedMs(key, now, playerLastSyncTime);
-
     let validatedClicks: number;
 
+    // variance check first
     if (varianceCheck(data.timestamps)) {
+      flaggedPlayers.add(key);
       validatedClicks = applyPenalty(delta, lastClicks);
     } else {
+      // cps check second
       validatedClicks = deltaCheck(
         delta,
         lastClicks,

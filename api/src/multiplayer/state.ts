@@ -7,3 +7,4 @@ export const activePowerups = new Map<
 >();
 export const playerPowerupCooldown = new Map<string, number>();
 export const playerLastSyncTime = new Map<string, number>();
+export const flaggedPlayers = new Set<string>();
