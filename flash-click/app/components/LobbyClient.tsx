@@ -31,15 +31,9 @@ function LobbyClient({ room }: LobbyClientProps) {
     socket.on("connect", emitRejoin);
     if (socket.connected) emitRejoin();
 
-    socket.on(
-      "player_joined",
-      ({ username, avatar, global_name, id }: User) => {
-        setPlayers((prev) => [
-          ...prev,
-          { username, avatar, global_name, id } as User,
-        ]);
-      },
-    );
+    socket.on("player_joined", (player: User) => {
+      setPlayers((prev) => [...prev, player]);
+    });
 
     socket.on("game_start", () => {
       router.push(`/game/${room.code}`);
