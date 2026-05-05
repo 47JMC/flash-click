@@ -159,7 +159,9 @@ export async function syncClicks(
 
     const key = `${data.code}:${socket.id}`;
     const lastClicks = playerClickHistory.get(key) ?? 0;
-    const delta = data.clicks - lastClicks;
+
+    const ABSOLUTE_MAX_DELTA = 15;
+    const delta = Math.min(data.clicks - lastClicks, ABSOLUTE_MAX_DELTA);
 
     if (delta < 0) {
       socket.to(data.code).emit("update_clicks", {
@@ -174,7 +176,7 @@ export async function syncClicks(
 
     // if already flagged skip all checks
     if (flaggedPlayers.has(key)) {
-      const validatedClicks = applyPenalty(delta, lastClicks);
+      const validatedClicks = applyPenalty(lastClicks);
       playerClickHistory.set(key, validatedClicks);
 
       await Room.updateOne(
@@ -203,7 +205,7 @@ export async function syncClicks(
     // variance check first
     if (varianceCheck(data.timestamps)) {
       flaggedPlayers.add(key);
-      validatedClicks = applyPenalty(delta, lastClicks);
+      validatedClicks = applyPenalty(lastClicks);
     } else {
       // cps check second
       validatedClicks = deltaCheck(
@@ -214,6 +216,11 @@ export async function syncClicks(
         data.clicks,
       );
     }
+
+    validatedClicks = Math.min(
+      validatedClicks,
+      lastClicks + ABSOLUTE_MAX_DELTA,
+    );
 
     playerClickHistory.set(key, validatedClicks);
 

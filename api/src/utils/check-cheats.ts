@@ -68,6 +68,6 @@ export function deltaCheck(
   return reportedClicks;
 }
 
-export function applyPenalty(delta: number, lastClicks: number): number {
-  return lastClicks + Math.floor(delta * 0.1);
+export function applyPenalty(lastClicks: number): number {
+  return lastClicks + 1;
 }
