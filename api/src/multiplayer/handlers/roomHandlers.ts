@@ -258,6 +258,12 @@ export async function rejoinRoom(
     );
 
     socket.join(data.code);
+
+    if (room.status === "running") {
+      socket.emit("game_start", { duration: room.duration });
+    } else if (room.status === "countdown") {
+      socket.emit("countdown_start");
+    }
   } catch (error) {
     console.log(error);
     return socket.emit("error", { message: "Failed to rejoin room" });
