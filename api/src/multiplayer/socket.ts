@@ -17,12 +17,46 @@ async function handleDisconnect(io: Server, socket: Socket) {
   try {
     const room = await Room.findOne({
       "players.socketId": socket.id,
-      status: { $in: ["running", "countdown"] },
     });
 
     if (!room) return;
 
-    await endGame(io, room.code, socket.id);
+    if (room.status === "running" || room.status === "countdown") {
+      await endGame(io, room.code, socket.id);
+      return;
+    }
+
+    if (room.status === "waiting") {
+      await Room.updateOne(
+        { code: room.code },
+        { $pull: { players: { socketId: socket.id } } },
+      );
+
+      const updatedRoom = await Room.findOne({ code: room.code });
+
+      if (!updatedRoom || updatedRoom.players.length === 0) {
+        await Room.deleteOne({ code: room.code });
+        return;
+      }
+
+      // if host left, assign new host
+      const wasHost = room.players.find(
+        (p) => p.socketId === socket.id,
+      )?.isHost;
+      if (wasHost) {
+        await Room.updateOne(
+          { code: room.code },
+          { $set: { "players.0.isHost": true } },
+        );
+        io.to(room.code).emit("new_host", {
+          newHostId: updatedRoom.players[0].id,
+        });
+      }
+
+      io.to(room.code).emit("player_left", {
+        playerId: room.players.find((p) => p.socketId === socket.id)?.id,
+      });
+    }
   } catch (error) {
     console.log(error);
   }
