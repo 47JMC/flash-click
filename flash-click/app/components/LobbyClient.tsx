@@ -35,7 +35,7 @@ function LobbyClient({ room }: LobbyClientProps) {
       setPlayers((prev) => [...prev, player]);
     });
 
-    socket.on("game_start", () => {
+    socket.on("redirect_to_game", () => {
       router.push(`/game/${room.code}`);
     });
 
@@ -63,7 +63,7 @@ function LobbyClient({ room }: LobbyClientProps) {
     return () => {
       socket.off("connect");
       socket.off("player_joined");
-      socket.off("game_start");
+      socket.off("redirect_to_game");
       socket.off("error");
       socket.off("player_left");
       socket.off("new_host");

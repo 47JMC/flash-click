@@ -27,7 +27,7 @@ export async function startGame(io: Server, socket: Socket) {
     return socket.emit("error", { message: "Need at least 2 players" });
 
   // emit to lobby so everyone redirects to game
-  io.to(room.code).emit("game_start");
+  io.to(room.code).emit("redirect_to_game", { code: room.code });
 
   await startGameTimer(io, room.code);
 }
@@ -41,7 +41,6 @@ export async function endGame(
   if (!finalRoom || finalRoom.players.length < 2) return;
 
   await Room.updateOne({ code }, { status: "done" });
-  activeTimers.delete(code);
 
   let winner;
 
@@ -65,6 +64,10 @@ export async function endGame(
       clicks: p.clicks,
     })),
   });
+
+  const timer = activeTimers.get(code);
+  if (timer) clearInterval(timer);
+  activeTimers.delete(code);
 
   setTimeout(async () => {
     await Room.deleteOne({ code });

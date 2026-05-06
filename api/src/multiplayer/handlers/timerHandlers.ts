@@ -5,7 +5,6 @@ import { endGame } from "./gameHandlers.js";
 
 export async function startGameTimer(io: Server, code: string) {
   if (activeTimers.get(code)) return;
-  activeTimers.set(code, true);
 
   const room = await Room.findOne({ code });
   if (!room) return console.error("Room doesn't exist");
@@ -22,6 +21,8 @@ export async function startGameTimer(io: Server, code: string) {
 
     if (countdown < 0) {
       clearInterval(countdownInterval);
+      activeTimers.delete(code); // clear countdown timer
+
       await Room.updateOne(
         { code },
         { status: "running", startedAt: new Date() },
@@ -40,6 +41,10 @@ export async function startGameTimer(io: Server, code: string) {
           await endGame(io, code);
         }
       }, 1000);
+
+      activeTimers.set(code, gameInterval); // store game interval
     }
   }, 1000);
+
+  activeTimers.set(code, countdownInterval); // store countdown interval
 }

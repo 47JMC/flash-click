@@ -1,5 +1,5 @@
 // state.ts
-export const activeTimers = new Map<string, boolean>();
+export const activeTimers = new Map<string, NodeJS.Timeout>();
 export const playerClickHistory = new Map<string, number>();
 export const activePowerups = new Map<
   string,
