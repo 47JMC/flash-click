@@ -29,6 +29,7 @@ function PlayerCard({ player, user, amHost, onPlayerKick }: PlayerCardProps) {
           width={36}
           height={36}
           className="rounded-full"
+          loading="eager"
         />
         <div className="flex-1">
           <p className="text-sm font-semibold">

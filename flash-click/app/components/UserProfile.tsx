@@ -18,6 +18,7 @@ function UserProfile() {
         width={48}
         height={48}
         className="rounded-full"
+        loading="eager"
       />
       <div className="flex flex-col font-fredoka font-medium">
         <p className="text-lg font-semibold">
