@@ -69,7 +69,7 @@ function Lobby() {
             <>
               <button
                 onClick={() => setStatus("creating")}
-                className="transition-colors cursor-pointer border-2 bg-blue-400 hover:bg-blue-700 hover:border-green-400 px-4 py-2 rounded"
+                className="transition-all cursor-pointer bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-4 py-2 rounded-lg border border-indigo-400"
               >
                 Create Room
               </button>
@@ -79,13 +79,13 @@ function Lobby() {
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                   placeholder="Room code"
                   maxLength={4}
-                  className="px-3 py-2 rounded bg-indigo-900 text-white tracking-widest uppercase"
+                  className="flex-1 px-3 py-2 font-fredoka rounded-lg bg-indigo-900 border-indigo-700 border-2 focus:border-indigo-400 focus:outline-none text-white tracking-widest uppercase placeholder:text-indigo-600"
                 />
                 <button
                   onClick={handleJoinRoom}
-                  className="transition-colors cursor-pointer border-2 bg-blue-400 hover:bg-blue-700 hover:border-green-400 px-4 py-2 rounded"
+                  className="transition-all cursor-pointer bg-indigo-800 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg border border-indigo-600 hover:border-indigo-400"
                 >
-                  Join Room
+                  Join
                 </button>
               </div>
             </>
@@ -102,7 +102,7 @@ function Lobby() {
         </div>
       ) : (
         <a
-          className="p-2 m-2 bg-blue-600 hover:bg-blue-800 transition-colors rounded-lg text-center"
+          className="p-2 m-2 bg-indigo-600 hover:bg-indigo-500 transition-colors rounded-lg text-center font-semibold text-white"
           href={`${API_BASE_URL}/auth/login`}
         >
           Login
