@@ -29,7 +29,9 @@ export default function RootLayout({
       lang="en"
       className={`${fredokaFont.variable} ${nunitoFont.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <main>{children}</main>
+      </body>
     </html>
   );
 }
