@@ -208,12 +208,14 @@ function GameClient({ room }: GameClientProps) {
               ))}
           </div>
 
-          <Link
-            href="/"
-            className="px-8 py-3 rounded-full bg-purple-700 hover:bg-purple-600 transition-all font-semibold"
-          >
-            Back to lobby
-          </Link>
+          <div className="pt-12">
+            <Link
+              href="/"
+              className="px-8 py-3 rounded-full bg-purple-700 hover:bg-purple-600 transition-all font-semibold"
+            >
+              Back to lobby
+            </Link>
+          </div>
         </div>
       )}
 
