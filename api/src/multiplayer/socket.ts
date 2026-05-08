@@ -11,7 +11,7 @@ import {
   usePowerUp,
 } from "./handlers/roomHandlers.js";
 import Room from "../models/Room.js";
-import { endGame, startGame } from "./handlers/gameHandlers.js";
+import { endGame, resetRoom, startGame } from "./handlers/gameHandlers.js";
 
 async function handleDisconnect(io: Server, socket: Socket) {
   try {
@@ -23,6 +23,20 @@ async function handleDisconnect(io: Server, socket: Socket) {
 
     if (room.status === "running" || room.status === "countdown") {
       await endGame(io, room.code, socket.id);
+      return;
+    }
+
+    if (room.status === "done") {
+      await Room.updateOne(
+        { code: room.code },
+        { $pull: { players: { socketId: socket.id } } },
+      );
+
+      const updatedRoom = await Room.findOne({ code: room.code });
+
+      if (!updatedRoom || updatedRoom.players.length === 0) {
+        await Room.deleteOne({ code: room.code });
+      }
       return;
     }
 
@@ -98,6 +112,7 @@ export function initSocket(io: Server) {
 
     socket.on("use_powerup", (data) => usePowerUp(io, socket, data));
     socket.on("start_game", () => startGame(io, socket));
+    socket.on("reset_room", (data) => resetRoom(io, socket, data));
 
     socket.on("disconnect", () => handleDisconnect(io, socket));
   });

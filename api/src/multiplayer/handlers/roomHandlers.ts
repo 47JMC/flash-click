@@ -198,7 +198,7 @@ export async function syncClicks(
 
     const activePowerup = activePowerups.get(key);
     const multiplier = getMultiplier(room.powerups, activePowerup);
-    const maxCPS = 18 * multiplier;
+    const maxCPS = 25 * multiplier;
 
     let validatedClicks: number;
 
@@ -292,23 +292,27 @@ export async function leaveRoom(
       { $pull: { players: { id: user.id } } },
     );
 
-    // Notify other players
-    io.to(data.code).emit("player_left", {
-      playerId: user.id,
-      wasHost,
-    });
+    const updatedRoom = await Room.findOne({ code: data.code });
 
-    if (wasHost && room.status === "waiting") {
-      const updatedRoom = await Room.findOne({ code: data.code });
-      if (updatedRoom && updatedRoom.players.length > 0) {
-        await Room.updateOne(
-          { code: data.code },
-          { $set: { "players.0.isHost": true } },
-        );
-        io.to(data.code).emit("new_host", {
-          newHostId: updatedRoom.players[0].id,
-        });
-      }
+    // delete room if empty
+    if (!updatedRoom || updatedRoom.players.length === 0) {
+      await Room.deleteOne({ code: data.code });
+      socket.leave(data.code);
+      return;
+    }
+
+    // notify others
+    io.to(data.code).emit("player_left", { playerId: user.id });
+
+    // reassign host if host left
+    if (wasHost && (room.status === "waiting" || room.status === "done")) {
+      await Room.updateOne(
+        { code: data.code },
+        { $set: { "players.0.isHost": true } },
+      );
+      io.to(data.code).emit("new_host", {
+        newHostId: updatedRoom.players[0].id,
+      });
     }
 
     socket.leave(data.code);

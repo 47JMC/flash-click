@@ -10,6 +10,7 @@ import Image from "next/image";
 import Link from "next/link";
 import PowerupsBox from "./PowerupsBox";
 import Powerup from "./Powerup";
+import { useRouter } from "next/navigation";
 
 type GameClientProps = {
   room: Room;
@@ -31,6 +32,7 @@ function GameClient({ room }: GameClientProps) {
   const [doubleActive, setDoubleActive] = useState(false);
   const [ghostActive, setGhostActive] = useState(false);
   const [overclockActive, setOverclockActive] = useState(false);
+  const [roomReset, setRoomReset] = useState(false);
 
   const clicksRef = useRef(0);
   const socketRef = useRef<Socket | null>(null);
@@ -38,9 +40,13 @@ function GameClient({ room }: GameClientProps) {
   const overclockRef = useRef(false);
   const lastSyncedClicks = useRef(0);
 
+  const router = useRouter();
+  const routerRef = useRef(router);
+
   const { user } = useAuth();
 
   const clickTimestamps = useRef<number[]>([]);
+  const amHost = room.players.find((p) => p.id === user?.id)?.isHost;
 
   const me = room.players.find((p) => p.id === user?.id);
   const others = room.players.filter((p) => p.id !== user?.id);
@@ -96,6 +102,10 @@ function GameClient({ room }: GameClientProps) {
     socketRef.current.on("game_over", (data) => {
       setPhase("done");
       setResults(data);
+    });
+
+    socketRef.current.on("room_reset", () => {
+      setRoomReset(true);
     });
 
     socketRef.current.on(
@@ -158,6 +168,7 @@ function GameClient({ room }: GameClientProps) {
       socketRef.current?.off("timer_tick");
       socketRef.current?.off("game_over");
       socketRef.current?.off("powerup_active");
+      socketRef.current?.off("room_reset");
     };
   }, [room.code]);
 
@@ -211,10 +222,39 @@ function GameClient({ room }: GameClientProps) {
           <div className="pt-12">
             <Link
               href="/"
+              onClick={() =>
+                // in GameClient, before navigating
+                socketRef.current?.emit("leave_room", { code: room.code })
+              }
               className="px-8 py-3 rounded-full bg-purple-700 hover:bg-purple-600 transition-all font-semibold"
             >
               Back to lobby
             </Link>
+            {amHost ? (
+              <button
+                onClick={() => {
+                  socketRef.current?.emit("reset_room", { code: room.code });
+                  routerRef.current.push(`/lobby/${room.code}`);
+                }}
+                className="px-8 py-3 m-2 rounded-full bg-indigo-600 hover:bg-indigo-500 transition-all font-semibold"
+              >
+                Play again
+              </button>
+            ) : (
+              <button
+                onClick={() =>
+                  roomReset && routerRef.current.push(`/lobby/${room.code}`)
+                }
+                disabled={!roomReset}
+                className={`px-8 py-3 m-2 rounded-full transition-all font-fredoka ${
+                  roomReset
+                    ? "text-white bg-green-600 hover:bg-green-500 cursor-pointer"
+                    : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                {roomReset ? "Join Room" : "Waiting for host..."}
+              </button>
+            )}
           </div>
         </div>
       )}

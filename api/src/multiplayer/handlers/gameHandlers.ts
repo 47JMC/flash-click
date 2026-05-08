@@ -32,6 +32,51 @@ export async function startGame(io: Server, socket: Socket) {
   await startGameTimer(io, room.code);
 }
 
+export async function resetRoom(
+  io: Server,
+  socket: Socket,
+  data: { code: string },
+) {
+  try {
+    const room = await Room.findOne({ code: data.code });
+    if (!room) return socket.emit("error", { message: "Room not found" });
+
+    const player = room.players.find((p) => p.id === socket.data.user.id);
+    if (!player?.isHost)
+      return socket.emit("error", { message: "Only host can reset" });
+
+    // reset all player clicks
+    await Room.updateOne(
+      { code: data.code },
+      {
+        $set: {
+          status: "waiting",
+          startedAt: null,
+          "players.$[].clicks": 0,
+        },
+      },
+    );
+
+    // clean up state
+    for (const key of playerClickHistory.keys()) {
+      if (key.startsWith(data.code)) playerClickHistory.delete(key);
+    }
+    for (const key of flaggedPlayers) {
+      if (key.startsWith(data.code)) flaggedPlayers.delete(key);
+    }
+    for (const key of playerLastSyncTime.keys()) {
+      if (key.startsWith(data.code)) playerLastSyncTime.delete(key);
+    }
+    for (const key of activePowerups.keys()) {
+      if (key.startsWith(data.code)) activePowerups.delete(key);
+    }
+
+    io.to(data.code).emit("room_reset");
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 export async function endGame(
   io: Server,
   code: string,
@@ -68,10 +113,6 @@ export async function endGame(
   const timer = activeTimers.get(code);
   if (timer) clearInterval(timer);
   activeTimers.delete(code);
-
-  setTimeout(async () => {
-    await Room.deleteOne({ code });
-  }, 500);
 
   for (const key of playerClickHistory.keys()) {
     if (key.startsWith(code)) playerClickHistory.delete(key);
