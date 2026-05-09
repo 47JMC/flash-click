@@ -349,9 +349,9 @@ function GameClient({ room }: GameClientProps) {
       {/* Click button */}
       <div className="flex justify-center py-4">
         <button
-          onClick={addClick}
+          onPointerDown={addClick}
           disabled={phase !== "running"}
-          className="w-44 h-44 rounded-full bg-purple-700 hover:bg-purple-600 active:scale-90 transition-all text-2xl font-bold font-fredoka shadow-2xl shadow-purple-900/50 border-4 border-purple-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:bg-purple-700"
+          className="w-52 h-52 rounded-full bg-purple-700 hover:bg-purple-600 active:scale-90 transition-all text-2xl font-bold font-fredoka shadow-2xl shadow-purple-900/50 border-4 border-purple-400 disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:bg-purple-700 select-none"
         >
           {phase === "waiting"
             ? "..."
