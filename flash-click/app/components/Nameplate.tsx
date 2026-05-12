@@ -9,6 +9,8 @@ type NameplateProps = {
   animated?: boolean;
 };
 
+// Nameplate URL is sent by the backend check api/routes/auth.ts
+
 export default function Nameplate({
   asset,
   children,
