@@ -28,4 +28,5 @@ export type Settings = {
   clickGoal: number | null;
   powerups: boolean;
   maxPlayers: number;
+  visibility: "public" | "private";
 };

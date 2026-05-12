@@ -18,7 +18,7 @@ export type Room = {
   clickGoal: number | null;
   powerups: boolean;
   maxPlayers: number;
-  startedAt: Date;
+  visibility: "public" | "private";
 };
 
 export type Settings = {
@@ -27,4 +27,5 @@ export type Settings = {
   clickGoal: number | null;
   powerups: boolean;
   maxPlayers: number;
+  visibility: "public" | "private";
 };

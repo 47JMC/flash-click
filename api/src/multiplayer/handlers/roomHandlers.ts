@@ -2,6 +2,7 @@ import { Server, Socket } from "socket.io";
 import Room from "../../models/Room.js";
 
 import { Settings } from "../../utils/types.js";
+
 import { endGame } from "./gameHandlers.js";
 import {
   activePowerups,
@@ -69,6 +70,7 @@ export async function createRoom(
       clickGoal: settings.clickGoal,
       powerups: settings.powerups,
       countdown: settings.countdown,
+      visibility: settings.visibility,
     });
 
     await createdRoom.save();

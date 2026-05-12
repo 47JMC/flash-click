@@ -29,6 +29,11 @@ const roomSchema = new Schema(
     countdown: { type: Number, default: 3 },
     clickGoal: { type: Number, default: 0 },
     powerups: { type: Boolean, default: false },
+    visibility: {
+      type: String,
+      enum: ["public", "private"],
+      default: "public",
+    },
   },
   { timestamps: true },
 );
