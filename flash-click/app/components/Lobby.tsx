@@ -78,7 +78,12 @@ function Lobby() {
       {/* Left side */}
       <div className="flex flex-col gap-3 w-72 shrink-0">
         {user ? (
-          <div className="flex flex-col gap-3">
+          <motion.div
+            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col gap-3"
+          >
             {status === "idle" && (
               <>
                 <button
@@ -119,7 +124,7 @@ function Lobby() {
                 onBack={() => setStatus("idle")}
               />
             )}
-          </div>
+          </motion.div>
         ) : (
           <a
             className="p-2 m-2 bg-indigo-600 hover:bg-indigo-500 transition-colors rounded-lg text-center font-semibold text-white"

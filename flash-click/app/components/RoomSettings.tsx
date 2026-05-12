@@ -59,7 +59,7 @@ function RoomSettings({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
+      transition={{ duration: 0.3, delay: 0.2, ease: "easeOut" }}
       className="flex flex-col gap-1 w-full"
     >
       <p className="text-base font-fredoka font-semibold text-indigo-300 uppercase tracking-widest mb-2 text-center">
