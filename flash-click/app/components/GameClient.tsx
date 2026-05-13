@@ -39,6 +39,7 @@ function GameClient({ room }: GameClientProps) {
   const ghostActiveRef = useRef(false);
   const overclockRef = useRef(false);
   const lastSyncedClicks = useRef(0);
+  const roomDurationRef = useRef(room.duration);
 
   const router = useRouter();
   const routerRef = useRef(router);
@@ -105,6 +106,14 @@ function GameClient({ room }: GameClientProps) {
     });
 
     socketRef.current.on("room_reset", () => {
+      setMyClicks(0);
+      setPlayerClicks({});
+      setPhase("waiting");
+      setResults(null);
+      setTimeLeft(roomDurationRef.current);
+      clicksRef.current = 0;
+      clickTimestamps.current = [];
+      lastSyncedClicks.current = 0;
       setRoomReset(true);
     });
 
